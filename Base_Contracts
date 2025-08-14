@@ -1,0 +1,56 @@
+"""
+База данных договоров
+"""
+
+from __future__ import annotations
+from sqlalchemy import (
+    BigInteger, SmallInteger, Text, Date, ForeignKey, UniqueConstraint
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    """Базовый класс для моделей SQLAlchemy (в дальнейшем можно объединить с общим Base)"""
+    pass
+
+
+class Contract(Base):
+    """
+    Модель таблицы contracts.
+    Хранит договоры между исполнителем и клиентом.
+    """
+    __tablename__ = "contracts"
+    __table_args__ = (
+        # По желанию: номер договора уникален в разрезе исполнителя+клиента
+        UniqueConstraint("executor_id", "client_id", "contract_number", name="uq_contract_executor_client_number"),
+    )
+
+    # --- PK договора ---
+    contract_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+
+    # --- Связи с исполнителем и клиентом ---
+    executor_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("executors.executor_id", ondelete="RESTRICT"),  # нельзя удалить исполнителя, если есть договоры
+        nullable=False
+    )
+    client_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("clients.client_id", ondelete="RESTRICT"),      # нельзя удалить клиента, если есть договоры
+        nullable=False
+    )
+
+    # --- Реквизиты договора ---
+    contract_number: Mapped[str] = mapped_column(Text, nullable=False)  # номер договора (текст/число как строка)
+    contract_date: Mapped["datetime.date"] = mapped_column(Date, nullable=False)  # дата договора (дд.мм.гггг)
+    contract_type: Mapped[int | None] = mapped_column(SmallInteger)     # тип договора (число)
+    contract_file_path: Mapped[str | None] = mapped_column(Text)        # путь к .doc/.docx файлу договора
+
+    # --- Навигационные связи (по желанию) ---
+    applications: Mapped[list["Application"]] = relationship(
+        back_populates="contract",
+        cascade="all, delete-orphan"  # удаляем приложения при удалении договора (обычная практика)
+    )
+
+    def __repr__(self) -> str:
+        return f"<Contract id={self.contract_id} number={self.contract_number!r} executor_id={self.executor_id} client_id={self.client_id}>"
