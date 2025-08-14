@@ -1,0 +1,47 @@
+"""
+База данных приложений к договорам
+"""
+
+from __future__ import annotations
+from sqlalchemy import BigInteger, SmallInteger, Text, Date, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    """Базовый класс для моделей SQLAlchemy (в дальнейшем можно объединить с общим Base)"""
+    pass
+
+
+class Application(Base):
+    """
+    Модель таблицы contract_applications.
+    Приложения к договору. Первичный ключ составной: (contract_id, app_id).
+    """
+    __tablename__ = "contract_applications"
+
+    # --- Составной PK: ID договора + порядковый ID приложения внутри договора ---
+    contract_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("contracts.contract_id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    app_id: Mapped[int] = mapped_column(  # "присваиваемое ID приложения" внутри договора
+        SmallInteger,
+        primary_key=True
+    )
+
+    # --- Поля приложения ---
+    service_type: Mapped[int | None] = mapped_column(SmallInteger)    # тип услуги (число)
+    placement_address: Mapped[str | None] = mapped_column(Text)       # адрес размещения (текст)
+    price: Mapped[str | None] = mapped_column(Text)                   # стоимость (как текст, если формат гибкий)
+    start_date: Mapped["datetime.date" | None] = mapped_column(Date)  # дата начала (дд.мм.гггг)
+    end_date: Mapped[str | None] = mapped_column(Text)                # дата окончания (текст: месяц, год)
+    coverage: Mapped[str | None] = mapped_column(Text)                # охват (текст)
+    currency: Mapped[int | None] = mapped_column(SmallInteger)        # валюта (число-код)
+    ad_file_path: Mapped[str | None] = mapped_column(Text)            # путь к файлу рекламы на сервере
+
+    # --- Навигационная связь ---
+    contract: Mapped["Contract"] = relationship(back_populates="applications")
+
+    def __repr__(self) -> str:
+        return f"<Application contract_id={self.contract_id} app_id={self.app_id}>"
